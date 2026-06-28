@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cedrus Plastic Industries — Financial Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+<style>
+:root{
+  --red:#A32020; --red-dk:#7A1818; --red-dk2:#82141E; --pink:#EA9595; --pink-lt:#F4CACA;
+  --rose:#DB536A; --crim:#BA2741; --char:#464646; --gray:#7D7D7D;
+  --good:#1AAB40; --bad:#D64554;
+  --ink:#222; --muted:#6b6b6b; --line:#e7e7e7; --bg:#ffffff; --soft:#faf6f6;
+  --accent:#7A1818; --accent2:#82141E; --cardbg:#ffffff; --totbg:#F4CACA; --tottxt:#7A1818;
+  --page:#ececec;
+}
+body.dark{
+  --ink:#e9e6e6; --muted:#a8a3a3; --line:#3a3436; --bg:#1d1b1c; --soft:#262022;
+  --accent:#EA9595; --accent2:#DB536A; --cardbg:#241f21; --totbg:#3d2526; --tottxt:#F4CACA;
+  --page:#121011;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:var(--page);overflow:hidden}
+h1,h2,h3,.serif{font-family:Georgia,'Times New Roman',serif;font-weight:normal}
+
+.app{display:flex;height:100vh;width:100vw}
+
+/* ---------- SIDEBAR ---------- */
+.side{width:262px;flex:none;background:linear-gradient(170deg,var(--red-dk2),var(--red-dk) 60%,#5e1212);
+  color:#fff;display:flex;flex-direction:column;padding:24px 16px}
+.brand{padding:6px 10px 18px;border-bottom:1px solid rgba(255,255,255,.18);margin-bottom:16px}
+.brand .nm{font-family:Georgia,serif;font-size:21px;line-height:1.15}
+.brand .tg{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;opacity:.75;margin-top:6px}
+.nav{display:flex;flex-direction:column;gap:5px;overflow:auto}
+.nbtn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:transparent;border:none;
+  color:#f3dede;font-size:13.5px;font-family:Arial;padding:11px 13px;border-radius:9px;cursor:pointer;transition:.15s}
+.nbtn svg{width:19px;height:19px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8}
+.nbtn .num{margin-left:auto;font-size:11px;opacity:.5}
+.nbtn:hover{background:rgba(255,255,255,.12);color:#fff}
+.nbtn.on{background:#fff;color:var(--red-dk);font-weight:bold}
+.nbtn.on .num{opacity:.6}
+.side .ft{margin-top:auto;padding:14px 10px 4px;border-top:1px solid rgba(255,255,255,.18);
+  font-size:11px;opacity:.7;line-height:1.5}
+/* collapsed sidebar */
+.app.collapsed .side{width:62px;padding:24px 8px}
+.app.collapsed .side .brand,.app.collapsed .nbtn span,.app.collapsed .side .ft{display:none}
+.app.collapsed .nbtn{justify-content:center;padding:11px 0}
+.app.collapsed .nav{margin-top:6px}
+
+/* ---------- MAIN ---------- */
+.main{flex:1;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 30px;border-bottom:1px solid var(--line)}
+.topbar .kick{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--red);font-weight:bold}
+.topbar h2{font-size:25px;color:var(--accent);margin-top:2px}
+.topbar .tools{display:flex;gap:8px;align-items:center}
+.tbtn{width:34px;height:34px;border:1px solid var(--line);background:var(--soft);
+  color:var(--accent);border-radius:8px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.tbtn:hover{background:var(--totbg)}
+.tbtn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.9}
+.content{flex:1;overflow:auto;padding:24px 30px 30px;position:relative}
+
+.page{display:none;animation:fade .3s ease;height:100%;flex-direction:column}
+.page.on{display:flex}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.psub{font-size:13px;color:var(--muted);margin:-6px 0 18px}
+
+/* KPI cards */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi{background:var(--soft);border:1px solid var(--line);border-top:4px solid var(--red);border-radius:10px;padding:14px 16px}
+.kpi .lab{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.kpi .val{font-family:Georgia,serif;font-size:28px;color:var(--accent);margin-top:5px}
+.kpi .note{font-size:11.5px;color:var(--muted);margin-top:3px}
+.kpi.alt{border-top-color:var(--char)}.kpi.alt .val{color:var(--ink)}
+
+.cols{display:grid;gap:24px;flex:1;min-height:0}
+.c2{grid-template-columns:1.15fr .85fr}
+.c2b{grid-template-columns:1fr 1fr}
+.panel{display:flex;flex-direction:column;min-height:0}
+.panel h3{font-size:15px;color:var(--accent);margin-bottom:10px}
+.card{background:var(--cardbg);border:1px solid var(--line);border-radius:12px;padding:16px}
+.chartbox{position:relative;flex:1;min-height:210px}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 10px;text-align:right}
+th:first-child,td:first-child{text-align:left}
+thead th{background:var(--red-dk2);color:#fff;font-weight:normal;font-size:12px}
+tbody tr:nth-child(even){background:var(--soft)}
+tbody td{border-bottom:1px solid var(--line)}
+tr.tot td{font-weight:bold;background:var(--totbg);color:var(--tottxt);border-top:2px solid var(--red)}
+tr.sub td{color:var(--muted)}
+
+.heat td{text-align:center;font-variant-numeric:tabular-nums;color:#fff;font-weight:bold;border:2px solid #fff}
+.heat th{background:var(--char);text-align:center}
+.heat td.rl{background:var(--char);color:#fff;text-align:left}
+
+.bullets{list-style:none}
+.bullets li{padding:9px 0 9px 28px;position:relative;font-size:14px;border-bottom:1px solid var(--line)}
+.bullets li:before{content:"";position:absolute;left:0;top:14px;width:11px;height:11px;background:var(--red);border-radius:3px}
+.bullets li b{color:var(--accent)}
+.lead{font-size:14.5px;color:var(--ink);margin-bottom:12px;line-height:1.55}
+.takeaway{background:var(--soft);border-left:5px solid var(--red);padding:13px 16px;border-radius:0 8px 8px 0;font-size:13.5px;margin-top:14px;line-height:1.5}
+.takeaway b{color:var(--accent)}
+.flag{display:inline-block;background:var(--totbg);color:var(--tottxt);font-size:11px;padding:3px 9px;border-radius:12px;margin-left:6px;font-weight:bold}
+.split2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.mini{font-size:12px;color:var(--gray);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="brand">
+      <div class="nm">Cedrus Plastic<br>Industries</div>
+      <div class="tg">Financial Dashboard</div>
+    </div>
+    <nav class="nav" id="nav"></nav>
+    <div class="ft">Year 1 Projection · USD</div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:14px">
+        <button class="tbtn" id="collapse" aria-label="Toggle sidebar" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <div>
+          <div class="kick" id="tKick">Executive summary</div>
+          <h2 class="serif" id="tTitle">Year 1 financial snapshot</h2>
+        </div>
+      </div>
+      <div class="tools">
+        <button class="tbtn" id="theme" aria-label="Toggle dark mode" title="Toggle dark mode">
+          <svg id="themeIc" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1111.2 3 6.6 6.6 0 0021 12.8z"/></svg>
+        </button>
+        <button class="tbtn" id="prev" aria-label="Previous">‹</button>
+        <button class="tbtn" id="next" aria-label="Next">›</button>
+      </div>
+    </header>
+
+    <div class="content">
+
+      <!-- 0 OVERVIEW -->
+      <section class="page on">
+        <div class="psub">Base case — 5 machines at 40% capacity utilisation</div>
+        <div class="kpis">
+          <div class="kpi"><div class="lab">Revenue</div><div class="val">$1.6M</div><div class="note">5 products · 40% util.</div></div>
+          <div class="kpi"><div class="lab">Gross Profit</div><div class="val">$526K</div><div class="note">33.2% gross margin</div></div>
+          <div class="kpi"><div class="lab">EBITDA</div><div class="val">$299K</div><div class="note">18.9% EBITDA margin</div></div>
+          <div class="kpi"><div class="lab">Net Profit</div><div class="val">$221K</div><div class="note">14.0% net margin</div></div>
+          <div class="kpi alt"><div class="lab">Free Cash Flow</div><div class="val">$253K</div><div class="note">Net profit + depreciation</div></div>
+          <div class="kpi alt"><div class="lab">Total Investment</div><div class="val">$1.2M</div><div class="note">Construction + machinery</div></div>
+          <div class="kpi alt"><div class="lab">Simple Payback</div><div class="val">4.6 yrs</div><div class="note">2.1 yrs at 70% util.</div></div>
+          <div class="kpi alt"><div class="lab">Break-even</div><div class="val">17.7%</div><div class="note">Utilisation for EBIT = 0</div></div>
+        </div>
+        <div class="cols c2" style="margin-top:22px">
+          <div class="panel card"><h3>Revenue by product ($000, Year 1)</h3>
+            <div class="chartbox"><canvas id="revProd" role="img" aria-label="Revenue by product"></canvas></div></div>
+          <div class="panel card"><h3>From revenue to net profit ($000)</h3>
+            <div class="chartbox"><canvas id="bridge" role="img" aria-label="Profit bridge"></canvas></div></div>
+        </div>
+      </section>
+
+      <!-- 1 MODEL -->
+      <section class="page">
+        <div class="psub">A bottom-up, capacity-driven model — per-unit economics scaled by volume</div>
+        <div class="split2" style="flex:1;min-height:0">
+          <div>
+            <p class="lead">Per-unit economics are built from cycle times and shared factory costs, then scaled by volume into a monthly P&amp;L.</p>
+            <ul class="bullets">
+              <li><b>Capacity</b> — cycle time, cavities &amp; 23h × 26d run time set max units/machine</li>
+              <li><b>Volume</b> = max capacity × <b>utilisation %</b> (revenue driver #1)</li>
+              <li><b>Unit cost</b> — resin, fuel, depreciation, labour, rent, packing per unit</li>
+              <li><b>Profit</b> — Revenue − COGS − OpEx − D&amp;A − 17% tax</li>
+            </ul>
+            <div class="takeaway"><b>Three levers move everything:</b> capacity utilisation, resin price, and selling price.</div>
+          </div>
+          <div class="panel card"><h3>Where each dollar of cost comes from (COGS mix)</h3>
+            <div class="chartbox"><canvas id="cogsMix" role="img" aria-label="COGS cost mix"></canvas></div>
+            <p class="mini">Resin + fuel drive ~87% of COGS — the model is highly sensitive to both.</p></div>
+        </div>
+      </section>
+
+      <!-- 2 REVENUE -->
+      <section class="page">
+        <div class="psub">Selling price vs. fully-loaded unit cost — cents per unit</div>
+        <div class="cols c2" style="flex:none;height:280px">
+          <div class="panel card"><h3>Price vs. cost per unit (cents)</h3>
+            <div class="chartbox"><canvas id="priceCost" role="img" aria-label="Price versus cost"></canvas></div></div>
+          <div class="panel card"><h3>Profit margin by product</h3>
+            <div class="chartbox"><canvas id="margins" role="img" aria-label="Margins"></canvas></div></div>
+        </div>
+        <table style="margin-top:18px">
+          <thead><tr><th>Product</th><th>Price ¢</th><th>Cost ¢</th><th>Profit ¢</th><th>Margin</th><th>Max units/mo</th><th>Rev share</th></tr></thead>
+          <tbody>
+            <tr><td>605-T · Milco Ayran 200 ml</td><td>8.5</td><td>4.9</td><td>3.6</td><td>42.1%</td><td>615,086</td><td>15.8%</td></tr>
+            <tr><td>605-D · Tahina 900 g</td><td>20.5</td><td>13.3</td><td>7.2</td><td>34.9%</td><td>277,781</td><td>17.3%</td></tr>
+            <tr><td>905-D · US Gallon 135 g</td><td>42.0</td><td>32.0</td><td>10.0</td><td>23.7%</td><td>246,034</td><td>31.3%</td></tr>
+            <tr><td>MEP-70-3 · Tahina 900 g (3-cav)</td><td>20.5</td><td>12.6</td><td>8.0</td><td>38.8%</td><td>416,671</td><td>25.9%</td></tr>
+            <tr><td>DKM-250SV · Tahina Cap</td><td>2.5</td><td>1.7</td><td>0.8</td><td>31.6%</td><td>1,275,733</td><td>9.7%</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- 3 P&L -->
+      <section class="page">
+        <div class="psub">USD · base case at 40% utilisation</div>
+        <div class="cols c2b" style="flex:1;min-height:0">
+          <div class="panel">
+            <table>
+              <thead><tr><th>Line item</th><th>Monthly</th><th>Year 1</th><th>% Rev</th></tr></thead>
+              <tbody>
+                <tr class="tot"><td>Total Revenue</td><td>131,949</td><td>1,583,388</td><td>100.0%</td></tr>
+                <tr class="sub"><td>Total COGS</td><td>(88,087)</td><td>(1,057,050)</td><td>66.8%</td></tr>
+                <tr class="tot"><td>Gross Profit</td><td>43,862</td><td>526,339</td><td>33.2%</td></tr>
+                <tr class="sub"><td>Operating expenses</td><td>(18,972)</td><td>(227,664)</td><td>14.4%</td></tr>
+                <tr class="tot"><td>EBITDA</td><td>24,890</td><td>298,675</td><td>18.9%</td></tr>
+                <tr class="sub"><td>Depreciation</td><td>(2,667)</td><td>(32,000)</td><td>2.0%</td></tr>
+                <tr class="tot"><td>EBIT</td><td>22,223</td><td>266,675</td><td>16.8%</td></tr>
+                <tr class="sub"><td>Income tax (17%)</td><td>(3,778)</td><td>(45,335)</td><td>2.9%</td></tr>
+                <tr class="tot"><td>Net Profit</td><td>18,445</td><td>221,340</td><td>14.0%</td></tr>
+              </tbody>
+            </table>
+            <div class="takeaway">Margins are <b>stable across months</b> in Year 1 (flat volume) — the swing factors are the assumptions stress-tested in the sensitivity pages.</div>
+          </div>
+          <div class="panel card"><h3>Margin waterfall (% of revenue)</h3>
+            <div class="chartbox"><canvas id="marginWf" role="img" aria-label="Margin waterfall"></canvas></div></div>
+        </div>
+      </section>
+
+      <!-- 4 UTILISATION -->
+      <section class="page">
+        <div class="psub">The single largest value lever — revenue scales linearly, fixed costs are absorbed</div>
+        <div class="cols c2" style="flex:1;min-height:0">
+          <div class="panel card"><h3>EBITDA, Net Profit &amp; FCF vs. utilisation ($000)</h3>
+            <div class="chartbox"><canvas id="utilChart" role="img" aria-label="Profit versus utilisation"></canvas></div></div>
+          <div class="panel">
+            <table>
+              <thead><tr><th>Util.</th><th>Revenue</th><th>EBITDA</th><th>Net Profit</th><th>FCF</th></tr></thead>
+              <tbody>
+                <tr><td>30%</td><td>1,187,541</td><td>178,966</td><td>121,982</td><td>153,982</td></tr>
+                <tr class="tot"><td>40% (base)</td><td>1,583,388</td><td>298,675</td><td>221,340</td><td>253,340</td></tr>
+                <tr><td>50%</td><td>1,979,236</td><td>418,384</td><td>320,699</td><td>352,699</td></tr>
+                <tr><td>60%</td><td>2,375,083</td><td>538,094</td><td>420,058</td><td>452,058</td></tr>
+                <tr><td>70%</td><td>2,770,930</td><td>657,803</td><td>519,417</td><td>551,417</td></tr>
+                <tr><td>85%</td><td>3,364,701</td><td>837,367</td><td>668,455</td><td>700,455</td></tr>
+                <tr><td>100%</td><td>3,958,471</td><td>1,016,931</td><td>817,493</td><td>849,493</td></tr>
+              </tbody>
+            </table>
+            <div class="takeaway">Each <b>+10 pts of utilisation ≈ +$120K EBITDA</b> and +$99K FCF. EBITDA margin expands from 15% → 26%.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 5 RESIN -->
+      <section class="page">
+        <div class="psub">71% of COGS — base $1,800/ton. Profit is highly geared to resin cost</div>
+        <div class="cols c2" style="flex:none;height:280px">
+          <div class="panel card"><h3>EBITDA &amp; Net Profit vs. resin price ($000)</h3>
+            <div class="chartbox"><canvas id="rmChart" role="img" aria-label="Profit versus resin"></canvas></div></div>
+          <div class="panel card"><h3>EBITDA margin vs. resin price</h3>
+            <div class="chartbox"><canvas id="rmMargin" role="img" aria-label="Margin versus resin"></canvas></div></div>
+        </div>
+        <div class="split2" style="margin-top:18px">
+          <table>
+            <thead><tr><th>Resin $/ton</th><th>EBITDA</th><th>EBITDA %</th><th>Net Profit</th><th>FCF</th></tr></thead>
+            <tbody>
+              <tr><td>1,440 (−20%)</td><td>445,142</td><td>28.1%</td><td>342,908</td><td>374,908</td></tr>
+              <tr><td>1,620 (−10%)</td><td>371,909</td><td>23.5%</td><td>282,124</td><td>314,124</td></tr>
+              <tr class="tot"><td>1,800 (base)</td><td>298,675</td><td>18.9%</td><td>221,340</td><td>253,340</td></tr>
+              <tr><td>1,980 (+10%)</td><td>225,442</td><td>14.2%</td><td>160,557</td><td>192,557</td></tr>
+              <tr><td>2,160 (+20%)</td><td>152,208</td><td>9.6%</td><td>99,773</td><td>131,773</td></tr>
+              <tr><td>2,340 (+30%)</td><td>78,975</td><td>5.0%</td><td>38,989</td><td>70,989</td></tr>
+            </tbody>
+          </table>
+          <div class="takeaway" style="margin-top:0"><b>±10% resin ≈ ∓$73K EBITDA</b> (−25% impact). A +30% spike nearly erases net profit. <span class="flag">Hedge / index pricing</span><br><br>With a flat selling price, resin is the biggest profitability risk — mitigate with raw-material clauses in customer contracts.</div>
+        </div>
+      </section>
+
+      <!-- 6 PRICE & FUEL -->
+      <section class="page">
+        <div class="psub">Selling price &amp; fuel sensitivity, plus combined utilisation × resin scenarios</div>
+        <div class="cols c2" style="flex:none;height:270px">
+          <div class="panel card"><h3>EBITDA vs. selling price &amp; fuel price ($000)</h3>
+            <div class="chartbox"><canvas id="priceFuel" role="img" aria-label="EBITDA versus price and fuel"></canvas></div></div>
+          <div class="panel card"><h3>2-way: EBITDA ($000) — utilisation × resin price</h3>
+            <table class="heat" id="heat">
+              <thead><tr><th>Util ＼ Resin</th><th>−10%</th><th>Base</th><th>+10%</th><th>+20%</th></tr></thead>
+              <tbody>
+                <tr><td class="rl">40%</td><td>372</td><td>299</td><td>225</td><td>152</td></tr>
+                <tr><td class="rl">55%</td><td>579</td><td>478</td><td>378</td><td>277</td></tr>
+                <tr><td class="rl">70%</td><td>786</td><td>658</td><td>530</td><td>401</td></tr>
+                <tr><td class="rl">85%</td><td>993</td><td>837</td><td>682</td><td>526</td></tr>
+                <tr><td class="rl">100%</td><td>1,200</td><td>1,017</td><td>834</td><td>651</td></tr>
+              </tbody>
+            </table>
+            <p class="mini">Green = stronger EBITDA, red = weaker. Volume gains outweigh resin inflation across the grid.</p></div>
+        </div>
+        <div class="split2" style="margin-top:16px">
+          <div class="takeaway" style="margin-top:0"><b>Selling price:</b> ±5% price ≈ ∓$77K EBITDA — the highest margin leverage of any single lever. A −10% price war cuts EBITDA in half (to $145K).</div>
+          <div class="takeaway" style="margin-top:0"><b>Fuel:</b> 16% of COGS. Doubling fuel ($28→$56/20L) cuts EBITDA to $130K; +25% costs ~$42K EBITDA. Secondary but real.</div>
+        </div>
+      </section>
+
+      <!-- 7 TAKEAWAYS -->
+      <section class="page">
+        <div class="psub">Conclusions and watch-points</div>
+        <div class="split2" style="flex:1;min-height:0">
+          <div>
+            <h3 style="color:var(--accent);margin-bottom:8px">What the model says</h3>
+            <ul class="bullets">
+              <li><b>Profitable from Year 1</b> — even at a conservative 40% utilisation: $221K net profit, $253K FCF</li>
+              <li><b>Strong operating leverage</b> — 70% util. nearly triples FCF to $551K, payback ~2 years</li>
+              <li><b>Low break-even</b> — EBIT turns positive at just 17.7% utilisation</li>
+              <li><b>Capex $1.2M</b> recovered in 4.6 yrs (base) — faster as volumes ramp</li>
+            </ul>
+          </div>
+          <div>
+            <h3 style="color:var(--accent);margin-bottom:8px">Risks to manage</h3>
+            <ul class="bullets">
+              <li><b>Resin price exposure</b> — 71% of COGS; +30% wipes out most profit. Index customer pricing to resin</li>
+              <li><b>Selling-price discipline</b> — a 10% discount halves EBITDA</li>
+              <li><b>Volume / off-take</b> — economics hinge on filling capacity; secure committed demand</li>
+              <li><b>Fuel &amp; FX</b> — fuel 16% of COGS; LBP/USD rate (89,500) affects local costs</li>
+            </ul>
+          </div>
+        </div>
+        <div class="takeaway"><b>Bottom line:</b> a robust, cash-generative project with healthy margins and a low break-even. Value creation is driven primarily by <b>filling capacity</b> and <b>protecting spreads</b> against resin inflation through indexed pricing.</div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script>
+const RED='#A32020',REDDK='#7A1818',PINK='#EA9595',ROSE='#DB536A',CHAR='#464646',GRAY='#7D7D7D';
+const PALETTE=[RED,ROSE,'#82141E',PINK,CHAR];
+const fmt=v=>v.toLocaleString('en-US');
+Chart.defaults.font.family='Arial';Chart.defaults.font.size=12;Chart.defaults.color='#555';
+Chart.register(ChartDataLabels);
+Chart.defaults.set('plugins.datalabels',{display:false});
+const dlColor=()=>document.body.classList.contains('dark')?'#e6e2e2':'#3a3a3a';
+const dl=o=>Object.assign({display:true,color:dlColor(),font:{size:10,weight:'bold'},clamp:true},o);
+
+/* nav config */
+const PAGES=[
+  {k:'Executive summary',  t:'Year 1 financial snapshot', ic:'M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z'},
+  {k:'Model',              t:'Model architecture & drivers', ic:'M12 3l9 5-9 5-9-5zM3 13l9 5 9-5'},
+  {k:'Revenue drivers',    t:'Product portfolio & unit economics', ic:'M4 20V10M10 20V4M16 20v-7M20 20H3'},
+  {k:'Profitability',      t:'Projected P&L — Year 1', ic:'M8 3h8l3 4v14H5V7zM8 12h8M8 16h8'},
+  {k:'Sensitivity · Utilisation', t:'Capacity utilisation', ic:'M12 3a9 9 0 109 9M12 12l5-3M12 12V7'},
+  {k:'Sensitivity · Resin price', t:'Raw material (resin) price', ic:'M12 3s6 6 6 11a6 6 0 11-12 0c0-5 6-11 6-11z'},
+  {k:'Sensitivity · Price & Fuel',t:'Selling price, fuel & scenarios', ic:'M4 7h16M4 7l3-3M4 7l3 3M20 17H4M20 17l-3-3M20 17l-3 3'},
+  {k:'Takeaways',          t:'Key takeaways & watch-points', ic:'M5 12l5 5L20 6'}
+];
+const nav=document.getElementById('nav');
+PAGES.forEach((p,i)=>{
+  const b=document.createElement('button');b.className='nbtn'+(i===0?' on':'');
+  b.innerHTML=`<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="${p.ic}"/></svg><span>${p.k}</span><span class="num">${i+1}</span>`;
+  b.onclick=()=>go(i);nav.appendChild(b);
+});
+
+const pages=[...document.querySelectorAll('.page')];
+const btns=[...document.querySelectorAll('.nbtn')];
+let cur=0;const built={};
+function go(i){
+  i=Math.max(0,Math.min(pages.length-1,i));
+  pages[cur].classList.remove('on');btns[cur].classList.remove('on');
+  cur=i;
+  pages[cur].classList.add('on');btns[cur].classList.add('on');
+  document.getElementById('tKick').textContent=PAGES[i].k;
+  document.getElementById('tTitle').textContent=PAGES[i].t;
+  document.querySelector('.content').scrollTop=0;
+  if(builders[i]&&!built[i]){built[i]=true;builders[i]();if(document.body.classList.contains('dark'))applyChartTheme();}
+}
+document.getElementById('next').onclick=()=>go(cur+1);
+document.getElementById('prev').onclick=()=>go(cur-1);
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(cur+1);if(e.key==='ArrowLeft')go(cur-1);});
+
+/* collapse sidebar (persisted) */
+document.getElementById('collapse').onclick=()=>{
+  const c=document.querySelector('.app').classList.toggle('collapsed');
+  try{localStorage.setItem('cedrus.collapsed',c?'1':'0');}catch(e){}
+};
+
+/* dark / light theme */
+const SUN='M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4M12 8a4 4 0 100 8 4 4 0 000-8z';
+const MOON='M21 12.8A8.5 8.5 0 1111.2 3 6.6 6.6 0 0021 12.8z';
+function applyChartTheme(){
+  const dark=document.body.classList.contains('dark');
+  const tick=dark?'#bdb8b8':'#555', grid=dark?'rgba(255,255,255,.09)':'rgba(0,0,0,.07)';
+  Chart.defaults.color=tick;
+  Object.values(Chart.instances).forEach(ch=>{
+    if(ch.options.scales)Object.values(ch.options.scales).forEach(s=>{
+      if(s.ticks)s.ticks.color=tick;
+      if(s.grid)s.grid.color=grid;
+      if(s.title)s.title.color=tick;
+    });
+    if(ch.options.plugins&&ch.options.plugins.legend&&ch.options.plugins.legend.labels)
+      ch.options.plugins.legend.labels.color=tick;
+    if(ch.config.type!=='doughnut'){
+      const dlc=dark?'#e6e2e2':'#3a3a3a';
+      if(ch.options.plugins&&ch.options.plugins.datalabels)ch.options.plugins.datalabels.color=dlc;
+      ch.data.datasets.forEach(ds=>{if(ds.datalabels&&ds.datalabels.color!==false&&'color'in ds.datalabels)ds.datalabels.color=dlc;});
+    }
+    ch.update('none');
+  });
+}
+function setTheme(dark){
+  document.body.classList.toggle('dark',dark);
+  document.getElementById('themeIc').innerHTML=`<path d="${dark?SUN:MOON}"/>`;
+  applyChartTheme();
+}
+document.getElementById('theme').onclick=()=>{
+  const dark=!document.body.classList.contains('dark');
+  setTheme(dark);
+  try{localStorage.setItem('cedrus.dark',dark?'1':'0');}catch(e){}
+};
+
+/* restore persisted preferences */
+try{
+  let pref=localStorage.getItem('cedrus.dark');
+  if(pref===null)pref=matchMedia('(prefers-color-scheme: dark)').matches?'1':'0';
+  if(pref==='1')setTheme(true);
+  if(localStorage.getItem('cedrus.collapsed')==='1')document.querySelector('.app').classList.add('collapsed');
+}catch(e){}
+
+/* chart builders */
+const noLeg={legend:{display:false}};
+const baseOpt=extra=>Object.assign({responsive:true,maintainAspectRatio:false,plugins:noLeg},extra);
+const builders={};
+
+builders[0]=()=>{
+  new Chart(revProd,{type:'bar',data:{labels:['605-T\nAyran','605-D\nTahina','905-D\nGallon','MEP\nTahina','DKM\nCap'],
+    datasets:[{data:[251,273,496,410,153],backgroundColor:PALETTE,borderRadius:4}]},
+    options:baseOpt({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>'$'+c.parsed.y+'K'}},
+      datalabels:dl({anchor:'end',align:'end',offset:2,formatter:v=>'$'+v+'K'})},
+      scales:{y:{ticks:{callback:v=>'$'+v+'K'},grace:'12%'}}})});
+  new Chart(bridge,{type:'bar',data:{labels:['Revenue','COGS','OpEx','D&A','Tax','Net'],
+    datasets:[{data:[[0,1583],[526,1583],[299,526],[267,299],[221,267],[0,221]],
+      backgroundColor:[RED,PINK,PINK,PINK,PINK,REDDK],borderRadius:3}]},
+    options:baseOpt({plugins:{legend:{display:false},
+      datalabels:dl({anchor:'end',align:'end',offset:2,formatter:v=>'$'+Math.round(Math.abs(v[1]-v[0]))+'K'})},
+      scales:{y:{ticks:{callback:v=>'$'+v+'K'},grace:'12%'}}})});
+};
+builders[1]=()=>{
+  new Chart(cogsMix,{type:'doughnut',data:{labels:['Raw material 71%','Fuel 16%','Machinery 4%','Labour 4%','Packing 3%','Other 2%'],
+    datasets:[{data:[71,16,4.3,3.6,3.2,2],backgroundColor:[RED,ROSE,'#82141E',PINK,CHAR,GRAY],borderWidth:2,borderColor:'#fff'}]},
+    options:baseOpt({cutout:'58%',plugins:{legend:{display:true,position:'right',labels:{boxWidth:12,font:{size:12}}},
+      datalabels:{display:true,color:'#fff',font:{size:11,weight:'bold'},formatter:v=>v>=4?v+'%':''}}})});
+};
+builders[2]=()=>{
+  new Chart(priceCost,{type:'bar',data:{labels:['605-T','605-D','905-D','MEP','DKM'],
+    datasets:[{label:'Price ¢',data:[8.5,20.5,42.0,20.5,2.5],backgroundColor:RED,borderRadius:3},
+      {label:'Cost ¢',data:[4.9,13.3,32.0,12.6,1.7],backgroundColor:PINK,borderRadius:3}]},
+    options:baseOpt({plugins:{legend:{display:true,position:'top',labels:{boxWidth:12}},
+      datalabels:dl({anchor:'end',align:'end',offset:1,font:{size:9,weight:'bold'},formatter:v=>v+'¢'})},
+      scales:{y:{ticks:{callback:v=>v+'¢'},grace:'12%'}}})});
+  new Chart(margins,{type:'bar',data:{labels:['605-T','605-D','905-D','MEP','DKM'],
+    datasets:[{data:[42.1,34.9,23.7,38.8,31.6],backgroundColor:PALETTE,borderRadius:4}]},
+    options:baseOpt({indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.x+'%'}},
+      datalabels:dl({anchor:'end',align:'right',offset:2,formatter:v=>v+'%'})},
+      scales:{x:{ticks:{callback:v=>v+'%'},max:50}}})});
+};
+builders[3]=()=>{
+  new Chart(marginWf,{type:'bar',data:{labels:['Gross 33.2%','EBITDA 18.9%','EBIT 16.8%','Net 14.0%'],
+    datasets:[{data:[33.2,18.9,16.8,14.0],backgroundColor:[RED,ROSE,'#82141E',REDDK],borderRadius:4}]},
+    options:baseOpt({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'%'}},
+      datalabels:dl({anchor:'end',align:'end',offset:2,formatter:v=>v+'%'})},
+      scales:{y:{ticks:{callback:v=>v+'%'},max:40}}})});
+};
+builders[4]=()=>{
+  const u=['30%','40%','50%','60%','70%','85%','100%'];
+  new Chart(utilChart,{data:{labels:u,
+    datasets:[
+      {type:'line',label:'EBITDA',data:[179,299,418,538,658,837,1017],borderColor:RED,backgroundColor:RED,tension:.25,borderWidth:3,pointRadius:4,
+        datalabels:dl({align:'top',offset:5,formatter:v=>'$'+v+'K'})},
+      {type:'line',label:'Net Profit',data:[122,221,321,420,519,668,817],borderColor:ROSE,backgroundColor:ROSE,borderDash:[6,4],tension:.25,borderWidth:3,pointRadius:4,
+        datalabels:dl({align:'bottom',offset:5,formatter:v=>'$'+v+'K'})},
+      {type:'line',label:'FCF',data:[154,253,353,452,551,700,849],borderColor:CHAR,backgroundColor:CHAR,borderDash:[2,3],tension:.25,borderWidth:2,pointRadius:3,datalabels:{display:false}}]},
+    options:baseOpt({plugins:{legend:{display:true,position:'top',labels:{boxWidth:14}}},
+      scales:{y:{ticks:{callback:v=>'$'+v+'K'},grace:'14%'},x:{title:{display:true,text:'Capacity utilisation'}}}})});
+};
+builders[5]=()=>{
+  const p=['$1,440','$1,620','$1,800','$1,980','$2,160','$2,340'];
+  new Chart(rmChart,{data:{labels:p,
+    datasets:[
+      {type:'line',label:'EBITDA',data:[445,372,299,225,152,79],borderColor:RED,backgroundColor:RED,tension:.2,borderWidth:3,pointRadius:4,
+        datalabels:dl({align:'top',offset:5,formatter:v=>'$'+v+'K'})},
+      {type:'line',label:'Net Profit',data:[343,282,221,161,100,39],borderColor:ROSE,backgroundColor:ROSE,borderDash:[6,4],tension:.2,borderWidth:3,pointRadius:4,
+        datalabels:dl({align:'bottom',offset:5,formatter:v=>'$'+v+'K'})}]},
+    options:baseOpt({plugins:{legend:{display:true,position:'top',labels:{boxWidth:14}}},
+      scales:{y:{ticks:{callback:v=>'$'+v+'K'},grace:'14%'},x:{title:{display:true,text:'Resin price ($/ton)'}}}})});
+  new Chart(rmMargin,{type:'bar',data:{labels:p,
+    datasets:[{data:[28.1,23.5,18.9,14.2,9.6,5.0],backgroundColor:p.map((_,i)=>i===2?REDDK:PINK),borderRadius:3}]},
+    options:baseOpt({plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'%'}},
+      datalabels:dl({anchor:'end',align:'end',offset:2,formatter:v=>v+'%'})},
+      scales:{y:{ticks:{callback:v=>v+'%'},grace:'14%'},x:{title:{display:true,text:'Resin price ($/ton)'}}}})});
+};
+builders[6]=()=>{
+  new Chart(priceFuel,{data:{labels:['−10%','−5%','Base','+5%','+10%','+15%'],
+    datasets:[
+      {type:'line',label:'Selling price',data:[145,222,299,375,452,529],borderColor:RED,backgroundColor:RED,tension:.2,borderWidth:3,pointRadius:4,
+        datalabels:dl({align:'top',offset:5,formatter:v=>'$'+v+'K'})},
+      {type:'line',label:'Fuel price',data:[330,324,299,256,214,130],borderColor:CHAR,backgroundColor:CHAR,borderDash:[6,4],tension:.2,borderWidth:3,pointRadius:4,
+        datalabels:dl({align:'bottom',offset:5,formatter:v=>'$'+v+'K'})}]},
+    options:baseOpt({plugins:{legend:{display:true,position:'top',labels:{boxWidth:14}},
+      tooltip:{callbacks:{label:c=>c.dataset.label+': $'+c.parsed.y+'K'}}},
+      scales:{y:{ticks:{callback:v=>'$'+v+'K'},grace:'14%'},x:{title:{display:true,text:'Change vs. base (price ↑ good · fuel ↑ bad)'}}}})});
+  const cells=[...document.querySelectorAll('#heat tbody td:not(.rl)')].map(td=>({td,v:+td.textContent.replace(',','')}));
+  const vals=cells.map(c=>c.v),mn=Math.min(...vals),mx=Math.max(...vals),lerp=(a,b,t)=>Math.round(a+(b-a)*t);
+  cells.forEach(c=>{const t=(c.v-mn)/(mx-mn);c.td.style.background=`rgb(${lerp(214,26,t)},${lerp(69,171,t)},${lerp(84,64,t)})`;});
+};
+
+builders[0]();  // overview visible on load
+if(document.body.classList.contains('dark'))applyChartTheme();
+</script>
+</body>
+</html>
